@@ -348,3 +348,6 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
+/index.html
+/React-JS-User-List-Workshop.docx
+/React-User-List-Workshop_resources.zip

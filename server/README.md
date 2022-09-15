@@ -8,15 +8,6 @@
 - [Dotenv](https://github.com/motdotla/dotenv)
 - [Nodemon](https://github.com/remy/nodemon)
 
-## Getting Started
-
-Clone this repository and install dependencies
-
-```
-> git clone https://github.com/MihailValkov/user-list-demo.git
-> cd server
-> npm install
-```
 
 ### Create '.env' file in the main directory and populate the following information:
 

@@ -5,10 +5,10 @@ import UserItem from "./UserItem/UserItem";
 
 function UserList({
     users,
-    userActionClickHandler: actionClickHandler
+    actionClickHandler
 }: {
     users: IListedUser[];
-    userActionClickHandler: (action: UserAction, userId: string) => void
+    actionClickHandler: (action: UserAction, userId: string) => void
 }) {
 
     return (

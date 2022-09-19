@@ -1,9 +1,9 @@
 import IListedUser from "../Users/IListedUser";
+import IResponseWithError from "./IResponseWithError";
 
-interface IGetUsersResponse {
+interface IListedUsersResponse extends IResponseWithError {
     users: IListedUser[];
     count: number;
-    error?: string;
 }
 
-export default IGetUsersResponse;
+export default IListedUsersResponse;

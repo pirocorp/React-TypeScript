@@ -1,26 +1,27 @@
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import * as userService from "../../services/userService";
 
-import { getFormData } from "../../utils/utils";
+import PageState from "../../common/PageOverlapComponent/PageState";
+import UserAction from "../../common/UserAction";
+import UserList from "../../components/UserList/UserList";
+import UserActionModal from "../../components/UserList/UserActionModal/UserActionModal";
+import UserPageOverlapComponent from "../../components/UserPageOverlapComponent/UserPageOverlapComponent";
+
 import { mapFromIAddEditUserFormToIAddUpdateUser } from "../../utils/mappings";
 
 import IUserDetails from "../../interfaces/Users/IUserDetails";
-import UserAction from "../../common/UserAction";
-import UserActionModal from "../../components/UserList/UserActionModal/UserActionModal";
 import IAddEditUserForm from "../../interfaces/Forms/AddEditUserForm";
-import IGetUsersResponse from "../../interfaces/Responses/IAllUsersResponse";
-import UserList from "../../components/UserList/UserList";
-import PageState from "../../common/PageOverlapComponent/PageState";
-
-import UserPageOverlapComponent from "../../components/UserPageOverlapComponent/UserPageOverlapComponent";
+import IListedUsersResponse from "../../interfaces/Responses/IAllUsersResponse";
+import IAddUpdateUserResponse from "../../interfaces/Responses/IAddUpdateUserResponse";
+import IListedUser from "../../interfaces/Users/IListedUser";
 
 function UsersPage() {
-    const [selectedUserAction, setSelectedUserAction] =
+    const [userAction, setSelectedUserAction] =
         useState<{user: IUserDetails | null, action: UserAction}>({user: null, action: UserAction.None});
 
-    const [usersResponse, setUsersResponse] =
-        useState<IGetUsersResponse>({ users: [], count: 0 });
+    const [usersState, setUsersState] =
+        useState<IListedUsersResponse>({ users: [], count: 0 });
 
     const [pageState, setPageState] = useState(PageState.Loading);
 
@@ -28,7 +29,7 @@ function UsersPage() {
         userService
             .getUsers()
             .then(r => {
-                setUsersResponse(r);
+                setUsersState(r);
 
                 if(r.error){
                     setPageState(PageState.Error);                    
@@ -40,13 +41,18 @@ function UsersPage() {
             });
     }, []);
 
-    const userActionClickHandler = (action: UserAction, userId: string) => {
+    const actionClickHandler = (action: UserAction, userId?: string) => {        
+        if(!userId) {
+            setSelectedUserAction({ user: null, action: action });
+            return;
+        }
+
         userService
             .getDetails(userId)
-            .then(responseUser => {
+            .then(response => {
                 setSelectedUserAction({
                     action: action,
-                    user: responseUser
+                    user: response.user ?? null
                 });
             });
     };
@@ -58,32 +64,62 @@ function UsersPage() {
         });
     }
 
-    const addHandler = (event: FormEvent<HTMLFormElement>) => {
-        event.preventDefault();
-
-        const data = getFormData<IAddEditUserForm>(event.target);
-        const userData = mapFromIAddEditUserFormToIAddUpdateUser(data);
+    const addHandler = (formValues: IAddEditUserForm) => {
+        const userData = mapFromIAddEditUserFormToIAddUpdateUser(formValues);
 
         userService
             .create(userData)
-            .then((user) => {
-                setUsersResponse(state => { return { ...state, users: [...state.users, user] } });
-                closeHandler();
+            .then((response) => {
+                userResponseHandler(
+                    response, 
+                    (state, user) => [...state.users, user]
+                );
             });
     }
 
-    const editHandler = (event: FormEvent<HTMLFormElement>, userId: string) => {
-        event.preventDefault();
-
-        const data = getFormData<IAddEditUserForm>(event.target);
-        const userData = mapFromIAddEditUserFormToIAddUpdateUser(data);
+    const editHandler = (formValues: IAddEditUserForm, userId: string) => {
+        const userData = mapFromIAddEditUserFormToIAddUpdateUser(formValues);
 
         userService
             .edit(userId, userData)
-            .then((user) => {
-                setUsersResponse(state => { return { ...state, users: state.users.map(u => u._id === user._id ? user : u) } });
-                closeHandler();
+            .then((response) => {
+                userResponseHandler(
+                    response, 
+                    (state, user) => state.users.map(u => u._id === user._id ? user : u)
+                );
             });
+    }
+
+    function userResponseHandler(
+        response: IAddUpdateUserResponse, 
+        changeUsers: (state: IListedUsersResponse, user: IListedUser) => IListedUser[]
+    ) {
+        if(!response.user){  
+            setPageState(PageState.Error);
+            setUsersState(state => {
+                const newState = {
+                    ...state,
+                    error: response.error
+                }
+
+                return newState
+            })
+            
+        } else {
+            const user = response.user;
+
+            setPageState(PageState.OK);
+            setUsersState(state => {
+                const newState = {
+                    ...state, 
+                    users: changeUsers(state, user)
+                };
+
+                return  newState;
+            });
+        }
+
+        closeHandler();
     }
 
     return (
@@ -91,8 +127,8 @@ function UsersPage() {
             <div className="table-wrapper">
                 {
                     <UserActionModal
-                        user={selectedUserAction.user}
-                        action={selectedUserAction.action}
+                        user={userAction.user}
+                        action={userAction.action}
                         onClose={closeHandler}
                         onAdd={addHandler}
                         onEdit={editHandler}
@@ -101,13 +137,13 @@ function UsersPage() {
 
                 {
                     pageState !== PageState.OK
-                        ?   <UserPageOverlapComponent pageState={pageState} message={usersResponse.error} />
+                        ?   <UserPageOverlapComponent pageState={pageState} message={usersState.error} />
                         : <></>
                 }
 
-                <UserList users={usersResponse.users} userActionClickHandler={userActionClickHandler} />
+                <UserList users={usersState.users} actionClickHandler={actionClickHandler} />
             </div>
-            <button className="btn-add btn" onClick={() => setSelectedUserAction({ user: null, action: UserAction.Add })}>Add new user</button>
+            <button className="btn-add btn" onClick={() => actionClickHandler(UserAction.Add)}>Add new user</button>
         </>
     );
 }
